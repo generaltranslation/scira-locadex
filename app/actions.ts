@@ -18,10 +18,16 @@ import {
   getExtremeSearchCount,
   incrementMessageUsage,
   getMessageCount,
+  getHistoricalUsageData,
 } from '@/lib/db/queries';
 import { getDiscountConfig } from '@/lib/discount';
 import { groq } from '@ai-sdk/groq';
 import { getSubscriptionDetails } from '@/lib/subscription';
+import {
+  usageCountCache,
+  createMessageCountKey,
+  createExtremeCountKey
+} from '@/lib/performance-cache';
 
 export async function suggestQuestions(history: any[]) {
   'use server';
@@ -29,7 +35,7 @@ export async function suggestQuestions(history: any[]) {
   console.log(history);
 
   const { object } = await generateObject({
-    model: scira.languageModel('scira-g2'),
+    model: scira.languageModel('scira-nano'),
     temperature: 0,
     maxTokens: 512,
     system: `You are a search engine follow up query/questions generator. You MUST create EXACTLY 3 questions for the search engine based on the message history.
@@ -41,6 +47,7 @@ export async function suggestQuestions(history: any[]) {
 - NEVER use pronouns (he, she, him, his, her, etc.) - always use proper nouns from the context
 - Questions must be related to tools available in the system
 - Questions should flow naturally from previous conversation
+- You are here to generate questions for the search engine not to use tools or run tools!!
 
 ### Tool-Specific Question Types:
 - Web search: Focus on factual information, current events, or general knowledge
@@ -225,6 +232,7 @@ const groupInstructions = {
 
   ### CRITICAL INSTRUCTION:
   - ⚠️ URGENT: RUN THE APPROPRIATE TOOL INSTANTLY when user sends ANY message - NO EXCEPTIONS
+  - ⚠️ URGENT: Always respond with markdown format!!
   - Read and think about the response guidelines before writing the response
   - EVEN IF THE USER QUERY IS AMBIGUOUS OR UNCLEAR, YOU MUST STILL RUN THE TOOL IMMEDIATELY
   - NEVER ask for clarification before running the tool - run first, clarify later if needed
@@ -321,6 +329,7 @@ const groupInstructions = {
      - Citation format: [Source Title](URL) - use descriptive source titles
      - For multiple sources supporting one claim, use format: [Source 1](URL1) [Source 2](URL2)
      - Cite the most relevant results that answer the question
+     - Never use the hr tag in the response even in markdown format!
      - Avoid citing irrelevant results or generic information
      - When citing statistics or data, always include the year when available
      - Code blocks should be formatted using the 'code' markdown syntax and should always contain the code and not response text unless requested by the user
@@ -1115,18 +1124,29 @@ export async function getSubDetails() {
   return subscriptionDetails;
 }
 
-export async function getUserMessageCount() {
+
+export async function getUserMessageCount(providedUser?: any) {
   'use server';
 
   try {
-    const user = await getUser();
+    const user = providedUser || await getUser();
     if (!user) {
       return { count: 0, error: 'User not found' };
+    }
+
+    // Check cache first
+    const cacheKey = createMessageCountKey(user.id);
+    const cached = usageCountCache.get(cacheKey);
+    if (cached !== null) {
+      return { count: cached, error: null };
     }
 
     const count = await getMessageCount({
       userId: user.id,
     });
+
+    // Cache the result
+    usageCountCache.set(cacheKey, count);
 
     return { count, error: null };
   } catch (error) {
@@ -1148,6 +1168,10 @@ export async function incrementUserMessageCount() {
       userId: user.id,
     });
 
+    // Invalidate cache
+    const cacheKey = createMessageCountKey(user.id);
+    usageCountCache.delete(cacheKey);
+
     return { success: true, error: null };
   } catch (error) {
     console.error('Error incrementing user message count:', error);
@@ -1155,18 +1179,28 @@ export async function incrementUserMessageCount() {
   }
 }
 
-export async function getExtremeSearchUsageCount() {
+export async function getExtremeSearchUsageCount(providedUser?: any) {
   'use server';
 
   try {
-    const user = await getUser();
+    const user = providedUser || await getUser();
     if (!user) {
       return { count: 0, error: 'User not found' };
+    }
+
+    // Check cache first
+    const cacheKey = createExtremeCountKey(user.id);
+    const cached = usageCountCache.get(cacheKey);
+    if (cached !== null) {
+      return { count: cached, error: null };
     }
 
     const count = await getExtremeSearchCount({
       userId: user.id,
     });
+
+    // Cache the result
+    usageCountCache.set(cacheKey, count);
 
     return { count, error: null };
   } catch (error) {
@@ -1185,5 +1219,59 @@ export async function getDiscountConfigAction() {
     return {
       enabled: false,
     };
+  }
+}
+
+export async function getHistoricalUsage(providedUser?: any) {
+  'use server';
+
+  try {
+    const user = providedUser || await getUser();
+    if (!user) {
+      return [];
+    }
+
+    const historicalData = await getHistoricalUsageData({ userId: user.id });
+    
+    // Create a complete 365-day dataset with defaults
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - 364);
+    
+    // Create a map of existing data for quick lookup
+    const dataMap = new Map<string, number>();
+    historicalData.forEach((record) => {
+      const dateKey = record.date.toISOString().split('T')[0];
+      dataMap.set(dateKey, record.messageCount || 0);
+    });
+    
+    // Generate complete dataset for all 365 days
+    const completeData = [];
+    for (let i = 0; i < 365; i++) {
+      const currentDate = new Date(startDate);
+      currentDate.setDate(startDate.getDate() + i);
+      const dateKey = currentDate.toISOString().split('T')[0];
+      
+      const count = dataMap.get(dateKey) || 0;
+      let level: 0 | 1 | 2 | 3 | 4;
+      
+      // Define usage levels based on message count
+      if (count === 0) level = 0;
+      else if (count <= 3) level = 1;
+      else if (count <= 7) level = 2;
+      else if (count <= 12) level = 3;
+      else level = 4;
+
+      completeData.push({
+        date: dateKey,
+        count,
+        level,
+      });
+    }
+    
+    return completeData;
+  } catch (error) {
+    console.error('Error getting historical usage:', error);
+    return [];
   }
 }

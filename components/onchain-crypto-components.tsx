@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { T, useGT, Var, Num } from 'gt-next';
 
 // UI Components
 import { Card } from '@/components/ui/card';
@@ -60,12 +61,17 @@ const formatCompact = (num: number | string): string => {
 
 // Main OnChain Token Price Component - Clean Card Design
 export const OnChainTokenPrice: React.FC<OnChainTokenPriceProps> = ({ result, network }) => {
+  const t = useGT();
   if (!result.success) {
     return (
       <Card className="mb-4 p-4 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20">
         <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
           <AlertTriangle className="h-4 w-4" />
-          <span className="text-sm font-medium">Error: {result.error || 'Failed to fetch token prices'}</span>
+          <T>
+            <span className="text-sm font-medium">
+              Error: <Var>{result.error || t('Failed to fetch token prices')}</Var>
+            </span>
+          </T>
         </div>
       </Card>
     );
@@ -83,9 +89,11 @@ export const OnChainTokenPrice: React.FC<OnChainTokenPriceProps> = ({ result, ne
         <Badge variant="outline" className="text-xs">
           {network.toUpperCase()}
         </Badge>
-        <span className="text-sm text-neutral-600 dark:text-neutral-400">
-          {data.length} tokens
-        </span>
+        <T>
+          <span className="text-sm text-neutral-600 dark:text-neutral-400">
+            <Num>{data.length}</Num> tokens
+          </span>
+        </T>
       </div>
 
       {/* Token Cards */}
@@ -105,7 +113,7 @@ export const OnChainTokenPrice: React.FC<OnChainTokenPriceProps> = ({ result, ne
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(token.address);
-                      toast.success('Copied!');
+                      toast.success(t('Copied!'));
                     }}
                     className="p-0.5 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded"
                   >
@@ -141,18 +149,26 @@ export const OnChainTokenPrice: React.FC<OnChainTokenPriceProps> = ({ result, ne
               <div className="grid grid-cols-2 gap-4 text-xs text-neutral-600 dark:text-neutral-400">
                 <div className="space-y-1">
                   {token.market_cap_usd && (
-                    <div>MCap: <span className="font-medium text-neutral-900 dark:text-neutral-100">{formatCompact(token.market_cap_usd)}</span></div>
+                    <T>
+                      <div>MCap: <span className="font-medium text-neutral-900 dark:text-neutral-100"><Var>{formatCompact(token.market_cap_usd)}</Var></span></div>
+                    </T>
                   )}
                   {token.fdv_usd && (
-                    <div>FDV: <span className="font-medium text-neutral-900 dark:text-neutral-100">{formatCompact(token.fdv_usd)}</span></div>
+                    <T>
+                      <div>FDV: <span className="font-medium text-neutral-900 dark:text-neutral-100"><Var>{formatCompact(token.fdv_usd)}</Var></span></div>
+                    </T>
                   )}
                 </div>
                 <div className="space-y-1">
                   {token.volume_24h_usd && (
-                    <div>Vol: <span className="font-medium text-neutral-900 dark:text-neutral-100">{formatCompact(token.volume_24h_usd)}</span></div>
+                    <T>
+                      <div>Vol: <span className="font-medium text-neutral-900 dark:text-neutral-100"><Var>{formatCompact(token.volume_24h_usd)}</Var></span></div>
+                    </T>
                   )}
                   {token.total_reserve_in_usd && (
-                    <div>Reserves: <span className="font-medium text-neutral-900 dark:text-neutral-100">{formatCompact(token.total_reserve_in_usd)}</span></div>
+                    <T>
+                      <div>Reserves: <span className="font-medium text-neutral-900 dark:text-neutral-100"><Var>{formatCompact(token.total_reserve_in_usd)}</Var></span></div>
+                    </T>
                   )}
                 </div>
               </div>

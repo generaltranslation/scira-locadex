@@ -9,6 +9,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { motion } from 'framer-motion';
 import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { T, useGT, Var, Num, DateTime } from 'gt-next';
 
 interface AcademicResult {
   title: string;
@@ -58,7 +59,9 @@ const AcademicSourceCard: React.FC<{
             {paper.title}
           </h3>
           <div className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400">
-            <span className="truncate">Academic Paper</span>
+            <T>
+              <span className="truncate">Academic Paper</span>
+            </T>
             <ExternalLink className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
         </div>
@@ -80,11 +83,11 @@ const AcademicSourceCard: React.FC<{
         {paper.publishedDate && (
           <time className="text-xs text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5">
             <Calendar className="w-3 h-3" />
-            {new Date(paper.publishedDate).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            })}
+            <DateTime 
+              options={{ month: 'short', day: 'numeric', year: 'numeric' }}
+            >
+              {new Date(paper.publishedDate)}
+           </DateTime>
           </time>
         )}
       </div>
@@ -113,11 +116,15 @@ const AcademicPapersSheet: React.FC<{
               <div className="p-1.5 rounded-md bg-violet-50 dark:bg-violet-900/20">
                 <Book className="h-4 w-4 text-violet-600 dark:text-violet-400" />
               </div>
-              <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">All Academic Papers</h2>
+              <T>
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">All Academic Papers</h2>
+              </T>
             </div>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              {papers.length} research papers
-            </p>
+            <T>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                <Num>{papers.length}</Num> research papers
+              </p>
+            </T>
           </div>
 
           {/* Content */}
@@ -147,10 +154,37 @@ const AcademicPapersCard = ({ results }: AcademicPapersProps) => {
 
   // Add horizontal scroll support with mouse wheel
   const handleWheelScroll = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (e.deltaY !== 0) {
+    const container = e.currentTarget;
+    
+    // Only handle vertical scrolling
+    if (e.deltaY === 0) return;
+    
+    // Check if container can scroll horizontally
+    const canScrollHorizontally = container.scrollWidth > container.clientWidth;
+    if (!canScrollHorizontally) return;
+    
+    // Always stop propagation first to prevent page scroll interference
+    e.stopPropagation();
+    
+    // Check scroll position to determine if we should handle the event
+    const isAtLeftEdge = container.scrollLeft <= 1; // Small tolerance for edge detection
+    const isAtRightEdge = container.scrollLeft >= container.scrollWidth - container.clientWidth - 1;
+    
+    // Only prevent default if we're not at edges OR if we're scrolling in the direction that would move within bounds
+    if (!isAtLeftEdge && !isAtRightEdge) {
+      // In middle of scroll area - always handle
       e.preventDefault();
-      e.currentTarget.scrollLeft += e.deltaY;
+      container.scrollLeft += e.deltaY;
+    } else if (isAtLeftEdge && e.deltaY > 0) {
+      // At left edge, scrolling right - handle it
+      e.preventDefault();
+      container.scrollLeft += e.deltaY;
+    } else if (isAtRightEdge && e.deltaY < 0) {
+      // At right edge, scrolling left - handle it
+      e.preventDefault();
+      container.scrollLeft += e.deltaY;
     }
+    // If at edge and scrolling in direction that would go beyond bounds, let the event continue but without propagation
   };
 
   // Show first 5 papers in preview
@@ -173,7 +207,9 @@ const AcademicPapersCard = ({ results }: AcademicPapersProps) => {
                 <div className="p-1.5 rounded-md bg-violet-50 dark:bg-violet-900/20">
                   <Book className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
                 </div>
-                <h2 className="font-medium text-sm">Academic Papers</h2>
+                <T>
+                  <h2 className="font-medium text-sm">Academic Papers</h2>
+                </T>
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="rounded-full text-xs px-2.5 py-0.5">
@@ -189,7 +225,7 @@ const AcademicPapersCard = ({ results }: AcademicPapersProps) => {
                       setSourcesSheetOpen(true);
                     }}
                   >
-                    View all
+                    <T>View all</T>
                     <ArrowUpRight className="w-3 h-3 ml-1" />
                   </Button>
                 )}

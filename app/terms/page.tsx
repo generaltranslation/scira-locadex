@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import NextImage from 'next/image';
 import { ExternalLink } from 'lucide-react';
+import { DateTime } from 'gt-next';
 
 const container = {
   hidden: { opacity: 0 },
@@ -56,8 +57,7 @@ export default function TermsPage() {
             <motion.div variants={item} className="text-center">
               <h1 className="text-4xl font-bold tracking-tight">Terms of Service</h1>
               <p className="text-neutral-600 dark:text-neutral-400 mt-3">
-                Last updated:{' '}
-                {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                Last updated: <DateTime>{new Date()}</DateTime>
               </p>
             </motion.div>
           </motion.div>
@@ -151,8 +151,7 @@ export default function TermsPage() {
           </p>
           <ul>
             <li>
-              <strong>Free Plan:</strong> Includes limited daily searches for most AI models, with unlimited access to
-              Grok 3 Mini and Grok 2 Vision models for registered users
+              <strong>Free Plan:</strong> Includes limited daily searches with access to basic AI models
             </li>
             <li>
               <strong>Scira Pro:</strong> $15/month subscription with unlimited searches and access to all AI models

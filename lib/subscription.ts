@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { subscription } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { headers } from 'next/headers';
+import { getGT } from 'gt-next/server';
 
 export type SubscriptionDetails = {
   id: string;
@@ -27,6 +28,8 @@ export type SubscriptionDetailsResult = {
 
 export async function getSubscriptionDetails(): Promise<SubscriptionDetailsResult> {
   'use server';
+
+  const t = await getGT();
 
   try {
     const session = await auth.api.getSession({
@@ -75,10 +78,10 @@ export async function getSubscriptionDetails(): Promise<SubscriptionDetailsResul
             organizationId: null,
           },
           error: isCanceled
-            ? 'Subscription has been canceled'
+            ? t('Subscription has been canceled')
             : isExpired
-              ? 'Subscription has expired'
-              : 'Subscription is not active',
+              ? t('Subscription has expired')
+              : t('Subscription is not active'),
           errorType: isCanceled ? 'CANCELED' : isExpired ? 'EXPIRED' : 'GENERAL',
         };
       }
@@ -106,7 +109,7 @@ export async function getSubscriptionDetails(): Promise<SubscriptionDetailsResul
     console.error('Error fetching subscription details:', error);
     return {
       hasSubscription: false,
-      error: 'Failed to load subscription details',
+      error: t('Failed to load subscription details'),
       errorType: 'GENERAL',
     };
   }

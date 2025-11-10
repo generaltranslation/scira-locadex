@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { useIsMobile } from '@/hooks/use-mobile';
-import type { Research } from '@/ai/extreme-search';
+import type { Research } from '@/lib/tools/extreme-search';
 import type { JSONValue, ToolInvocation } from 'ai';
 import React, { useEffect, useState, memo, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -18,6 +18,7 @@ import ReactECharts, { EChartsOption } from 'echarts-for-react';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import { Num, Plural, T, useGT } from 'gt-next';
 
 interface QueryBlockData {
   queryId: string;
@@ -72,11 +73,22 @@ const getQueryStatus = (
   return 'no_results'; // Amber
 };
 
+// Minimal color palette for charts with better contrast
+const CHART_COLORS = {
+  primary: ['#3b82f6', '#60a5fa'],
+  success: ['#22c55e', '#4ade80'],
+  warning: ['#f59e0b', '#fbbf24'],
+  purple: ['#8b5cf6', '#a78bfa'],
+  pink: ['#ec4899', '#f472b6'],
+  red: ['#ef4444', '#f87171'],
+};
+
 // Update the ExtremeChart component to be more standalone without the card wrapper
 const ExtremeChart = memo(({ chart }: { chart: any }) => {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
+  const { resolvedTheme} = useTheme();
+  const isDark = resolvedTheme === 'dark';
   const [isMobile, setIsMobile] = useState(false);
+  const t = useGT();
 
   useEffect(() => {
     const mobileMediaQuery = window.matchMedia('(max-width: 640px)');
@@ -86,6 +98,8 @@ const ExtremeChart = memo(({ chart }: { chart: any }) => {
     return () => mobileMediaQuery.removeEventListener('change', handler);
   }, []);
 
+
+
   // Memoize chartOptions
   const chartOptions = useMemo(() => {
     // Skip chart options calculation for composite charts
@@ -93,70 +107,45 @@ const ExtremeChart = memo(({ chart }: { chart: any }) => {
       return {};
     }
 
-    const chartColors = [
-      {
-        main: '#3b82f6', // blue
-        secondary: '#60a5fa',
-        gradient: new Array(2).fill(['#3b82f6', '#93c5fd']),
-      },
-      {
-        main: '#22c55e', // green
-        secondary: '#4ade80',
-        gradient: new Array(2).fill(['#22c55e', '#86efac']),
-      },
-      {
-        main: '#f59e0b', // amber
-        secondary: '#fbbf24',
-        gradient: new Array(2).fill(['#f59e0b', '#fcd34d']),
-      },
-      {
-        main: '#8b5cf6', // violet
-        secondary: '#a78bfa',
-        gradient: new Array(2).fill(['#8b5cf6', '#c4b5fd']),
-      },
-      {
-        main: '#ec4899', // pink
-        secondary: '#f472b6',
-        gradient: new Array(2).fill(['#ec4899', '#f9a8d4']),
-      },
-    ];
-
     const baseOption: EChartsOption = {
-      backgroundColor: isDark ? 'rgba(23, 23, 23, 0.02)' : 'rgba(255, 255, 255, 0.02)',
+      backgroundColor: 'transparent',
       grid: {
-        top: isMobile ? 50 : 70,
+        top: isMobile ? 50 : 65,
         right: isMobile ? 20 : 30,
-        bottom: isMobile ? 35 : 50,
-        left: isMobile ? 45 : 70,
+        bottom: isMobile ? 45 : 55,
+        left: isMobile ? 45 : 60,
         containLabel: true,
       },
       title: {
         text: chart.title,
         left: 'center',
-        top: isMobile ? 8 : 10,
+        top: isMobile ? 6 : 8,
         textStyle: {
-          color: isDark ? '#e5e5e5' : '#171717',
-          fontSize: isMobile ? 12 : 14,
-          fontWeight: 500,
+          color: isDark ? '#ffffff' : '#171717',
+          fontSize: isMobile ? 11 : 12,
+          fontWeight: 600,
           fontFamily: 'system-ui, -apple-system, sans-serif',
         },
       },
       tooltip: {
-        backgroundColor: isDark ? 'rgba(23, 23, 23, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+        backgroundColor: isDark ? '#1f1f1f' : '#ffffff',
         borderWidth: 1,
-        borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+        borderColor: isDark ? '#404040' : '#e5e5e5',
         textStyle: {
-          color: isDark ? '#e5e5e5' : '#171717',
+          color: isDark ? '#ffffff' : '#000000',
           fontSize: isMobile ? 10 : 11,
           fontFamily: 'system-ui, -apple-system, sans-serif',
         },
-        padding: [isMobile ? 4 : 6, isMobile ? 8 : 10],
-        extraCssText: 'box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); border-radius: 4px;',
+        padding: [8, 12],
+        extraCssText: `
+          box-shadow: 0 4px 12px rgba(0, 0, 0, ${isDark ? '0.4' : '0.1'});
+          border-radius: 6px;
+          z-index: 1000;
+        `,
         confine: true,
         enterable: false,
-        hideDelay: 0,
-        triggerOn: 'mousemove|click',
-        alwaysShowContent: false,
+        hideDelay: 100,
+        triggerOn: 'mousemove',
         position: function (
           pos: [number, number],
           params: any,
@@ -164,21 +153,43 @@ const ExtremeChart = memo(({ chart }: { chart: any }) => {
           rect: { x: number; y: number; width: number; height: number },
           size: { contentSize: [number, number]; viewSize: [number, number] },
         ) {
-          if (isMobile && dom) {
-            return [size.viewSize[0] / 2 - dom.offsetWidth / 2, 10];
+          // Ensure tooltip doesn't overlap with axis labels
+          const tooltipWidth = dom.offsetWidth;
+          const tooltipHeight = dom.offsetHeight;
+          const chartWidth = size.viewSize[0];
+          const chartHeight = size.viewSize[1];
+          
+          let x = pos[0];
+          let y = pos[1];
+          
+          // Keep tooltip within chart bounds and away from edges
+          if (x + tooltipWidth > chartWidth - 20) {
+            x = chartWidth - tooltipWidth - 20;
           }
-          return null;
+          if (x < 20) {
+            x = 20;
+          }
+          
+          // Keep tooltip above the bottom 60px to avoid axis labels
+          if (y + tooltipHeight > chartHeight - 60) {
+            y = pos[1] - tooltipHeight - 20;
+          }
+          if (y < 20) {
+            y = 20;
+          }
+          
+          return [x, y];
         },
       },
       legend: {
         show: true,
         type: 'scroll',
-        top: isMobile ? 28 : 36,
-        left: isMobile ? 'center' : 'auto',
-        orient: isMobile ? 'horizontal' : 'horizontal',
+        top: isMobile ? 26 : 32,
+        left: 'center',
+        orient: 'horizontal',
         textStyle: {
-          color: isDark ? '#a3a3a3' : '#525252',
-          fontSize: isMobile ? 9 : 11,
+          color: isDark ? '#d4d4d4' : '#525252',
+          fontSize: isMobile ? 9 : 10,
           fontFamily: 'system-ui, -apple-system, sans-serif',
         },
         icon: 'circle',
@@ -188,44 +199,44 @@ const ExtremeChart = memo(({ chart }: { chart: any }) => {
         pageIconSize: isMobile ? 8 : 10,
         pageTextStyle: {
           fontSize: isMobile ? 9 : 10,
-          color: isDark ? '#a3a3a3' : '#525252',
+          color: isDark ? '#d4d4d4' : '#525252',
         },
       },
       animation: true,
-      animationDuration: 300,
+      animationDuration: 400,
       animationEasing: 'cubicOut',
     };
 
     const axisStyle = {
       axisLine: {
+        show: true,
         lineStyle: {
-          color: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)',
+          color: isDark ? '#404040' : '#e5e5e5',
           width: 1,
         },
       },
       axisTick: {
+        show: true,
         lineStyle: {
-          color: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)',
+          color: isDark ? '#404040' : '#e5e5e5',
         },
         length: 4,
       },
       axisLabel: {
-        color: isDark ? '#a3a3a3' : '#525252',
+        color: isDark ? '#d4d4d4' : '#525252',
         fontSize: isMobile ? 9 : 10,
         fontFamily: 'system-ui, -apple-system, sans-serif',
-        margin: isMobile ? 8 : 12,
+        margin: isMobile ? 8 : 10,
+        hideOverlap: true,
       },
       splitLine: {
-        lineStyle: {
-          color: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
-          width: 1,
-          type: [3, 3],
-        },
+        show: false,
       },
     };
 
     // Handle different chart types
     if (chart.type === 'pie') {
+      const colorPalette = Object.values(CHART_COLORS);
       return {
         ...baseOption,
         tooltip: {
@@ -240,24 +251,24 @@ const ExtremeChart = memo(({ chart }: { chart: any }) => {
         series: [
           {
             type: 'pie',
-            radius: isMobile ? '60%' : '70%',
+            radius: isMobile ? '65%' : '70%',
             center: ['50%', '55%'],
             data: chart.elements.map((item: any, index: number) => {
-              const colorIndex = index % chartColors.length;
+              const colorSet = colorPalette[index % colorPalette.length];
               return {
                 name: item.label,
                 value: item.angle,
                 itemStyle: {
-                  color: chartColors[colorIndex].main,
-                  borderRadius: 4,
+                  color: colorSet[0],
+                  borderRadius: 3,
                   borderColor: isDark ? '#262626' : '#ffffff',
                   borderWidth: 1,
                 },
                 emphasis: {
                   itemStyle: {
-                    color: chartColors[colorIndex].secondary,
-                    shadowBlur: 8,
-                    shadowColor: 'rgba(0, 0, 0, 0.15)',
+                    color: colorSet[1],
+                    shadowBlur: 10,
+                    shadowColor: `rgba(0, 0, 0, ${isDark ? '0.4' : '0.2'})`,
                   },
                 },
               };
@@ -266,13 +277,14 @@ const ExtremeChart = memo(({ chart }: { chart: any }) => {
               show: !isMobile,
               position: 'outer',
               alignTo: 'labelLine',
-              color: isDark ? '#c7c7c7' : '#373737',
-              fontSize: 10,
+              color: isDark ? '#d4d4d4' : '#525252',
+              fontSize: 9,
+              fontWeight: 500,
             },
             labelLine: {
               show: !isMobile,
-              length: 8,
-              length2: 10,
+              length: 6,
+              length2: 8,
             },
           },
         ],
@@ -282,16 +294,18 @@ const ExtremeChart = memo(({ chart }: { chart: any }) => {
     const commonAxisOptions = (axisName?: string) => ({
       name: isMobile ? '' : axisName,
       nameLocation: 'middle',
-      nameGap: isMobile ? 25 : chart.type === 'bar' ? 45 : axisName?.toLowerCase().includes('y') ? 50 : 45,
+      nameGap: isMobile ? 25 : chart.type === 'bar' ? 40 : axisName?.toLowerCase().includes('y') ? 45 : 40,
       nameTextStyle: {
-        color: isDark ? '#a3a3a3' : '#525252',
-        fontSize: isMobile ? 9 : 11,
+        color: isDark ? '#d4d4d4' : '#525252',
+        fontSize: isMobile ? 9 : 10,
+        fontWeight: 500,
         fontFamily: 'system-ui, -apple-system, sans-serif',
       },
       ...axisStyle,
     });
 
     if (chart.type === 'line' || chart.type === 'scatter') {
+      const colorPalette = Object.values(CHART_COLORS);
       return {
         ...baseOption,
         tooltip: {
@@ -300,10 +314,13 @@ const ExtremeChart = memo(({ chart }: { chart: any }) => {
           axisPointer: {
             type: 'cross',
             crossStyle: {
-              color: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+              color: isDark ? '#525252' : '#d4d4d4',
+              width: 1,
             },
             lineStyle: {
-              color: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+              color: isDark ? '#525252' : '#d4d4d4',
+              width: 1,
+              type: 'dashed',
             },
           },
         },
@@ -316,7 +333,7 @@ const ExtremeChart = memo(({ chart }: { chart: any }) => {
           ...commonAxisOptions(chart.y_label),
         },
         series: chart.elements.map((element: any, index: number) => {
-          const colorIndex = index % chartColors.length;
+          const colorSet = colorPalette[index % colorPalette.length];
           return {
             name: element.label,
             type: chart.type,
@@ -325,24 +342,24 @@ const ExtremeChart = memo(({ chart }: { chart: any }) => {
               return [x, point[1]];
             }),
             itemStyle: {
-              color: chartColors[colorIndex].main,
+              color: colorSet[0],
               borderWidth: 0,
             },
             lineStyle: {
               width: 2,
-              color: chartColors[colorIndex].main,
+              color: colorSet[0],
               cap: 'round',
               join: 'round',
             },
-            smooth: chart.type === 'line' ? 0.15 : undefined,
+            smooth: chart.type === 'line' ? 0.2 : undefined,
             symbol: chart.type === 'scatter' ? 'circle' : isMobile ? 'circle' : 'emptyCircle',
-            symbolSize: chart.type === 'scatter' ? (isMobile ? 5 : 8) : isMobile ? 4 : 5,
-            showSymbol: isMobile ? true : chart.type === 'scatter',
+            symbolSize: chart.type === 'scatter' ? (isMobile ? 4 : 6) : isMobile ? 3 : 4,
+            showSymbol: isMobile ? false : chart.type === 'scatter',
             emphasis: {
               focus: 'series',
               scale: false,
               itemStyle: {
-                color: chartColors[colorIndex].secondary,
+                color: colorSet[1],
               },
             },
             areaStyle:
@@ -357,11 +374,11 @@ const ExtremeChart = memo(({ chart }: { chart: any }) => {
                       colorStops: [
                         {
                           offset: 0,
-                          color: `${chartColors[colorIndex].main}25`,
+                          color: `${colorSet[0]}15`,
                         },
                         {
                           offset: 1,
-                          color: `${chartColors[colorIndex].main}05`,
+                          color: `${colorSet[0]}03`,
                         },
                       ],
                     },
@@ -373,6 +390,7 @@ const ExtremeChart = memo(({ chart }: { chart: any }) => {
     }
 
     if (chart.type === 'bar') {
+      const colorPalette = Object.values(CHART_COLORS);
       // Group data by categories
       const categories = Array.from(new Set(chart.elements.map((e: any) => e.label)));
       const seriesData: Record<string, number[]> = {};
@@ -391,12 +409,9 @@ const ExtremeChart = memo(({ chart }: { chart: any }) => {
           ...baseOption.tooltip,
           trigger: 'axis',
           axisPointer: {
-            type: 'cross',
-            crossStyle: {
-              color: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
-            },
-            lineStyle: {
-              color: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+            type: 'shadow',
+            shadowStyle: {
+              color: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
             },
           },
         },
@@ -428,22 +443,22 @@ const ExtremeChart = memo(({ chart }: { chart: any }) => {
           },
         },
         series: seriesNames.map((name, index) => {
-          const colorIndex = index % chartColors.length;
+          const colorSet = colorPalette[index % colorPalette.length];
           return {
             name: name as string,
             type: 'bar',
             data: seriesData[name as string],
             itemStyle: {
-              color: chartColors[colorIndex].main,
+              color: colorSet[0],
               borderRadius: [isMobile ? 2 : 3, isMobile ? 2 : 3, 0, 0],
             },
             emphasis: {
               itemStyle: {
-                color: chartColors[colorIndex].secondary,
+                color: colorSet[1],
               },
             },
-            barMaxWidth: isMobile ? 25 : 35,
-            barGap: '30%',
+            barMaxWidth: isMobile ? 20 : 30,
+            barGap: '20%',
           };
         }),
       };
@@ -464,11 +479,11 @@ const ExtremeChart = memo(({ chart }: { chart: any }) => {
           formatter: function (params: any) {
             const data = params.data;
             return `${params.seriesName}<br/>
-                   <strong>Maximum:</strong> ${data[4]}<br/>
-                   <strong>Upper Quartile:</strong> ${data[3]}<br/>
-                   <strong>Median:</strong> ${data[2]}<br/>
-                   <strong>Lower Quartile:</strong> ${data[1]}<br/>
-                   <strong>Minimum:</strong> ${data[0]}`;
+                   <strong>${t('Maximum')}:</strong> ${data[4]}<br/>
+                   <strong>${t('Upper Quartile')}:</strong> ${data[3]}<br/>
+                   <strong>${t('Median')}:</strong> ${data[2]}<br/>
+                   <strong>${t('Lower Quartile')}:</strong> ${data[1]}<br/>
+                   <strong>${t('Minimum')}:</strong> ${data[0]}`;
           },
         },
         xAxis: {
@@ -484,7 +499,7 @@ const ExtremeChart = memo(({ chart }: { chart: any }) => {
         },
         series: [
           {
-            name: chart.title || 'Box Plot',
+            name: chart.title || t('Box Plot'),
             type: 'boxplot',
             data: chart.elements.map((element: any) => {
               // If data is already in boxplot format [min, Q1, median, Q3, max]
@@ -528,17 +543,17 @@ const ExtremeChart = memo(({ chart }: { chart: any }) => {
               return [0, 0, 0, 0, 0];
             }),
             itemStyle: {
-              color: chartColors[0].secondary,
-              borderColor: chartColors[0].main,
+              color: CHART_COLORS.primary[1],
+              borderColor: CHART_COLORS.primary[0],
             },
             emphasis: {
               itemStyle: {
                 borderWidth: 2,
-                shadowBlur: 5,
-                shadowColor: 'rgba(0,0,0,0.2)',
+                shadowBlur: 8,
+                shadowColor: `rgba(0, 0, 0, ${isDark ? '0.4' : '0.2'})`,
               },
             },
-            boxWidth: [isMobile ? 30 : 50],
+            boxWidth: [isMobile ? 25 : 40],
           },
         ],
       };
@@ -577,14 +592,14 @@ const ExtremeChart = memo(({ chart }: { chart: any }) => {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-sm overflow-hidden h-full"
+      className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg shadow-sm overflow-hidden h-full"
     >
-      <div className="w-full pt-2 pb-1 px-2 h-64 sm:h-72">
+      <div className="w-full p-3 h-64 sm:h-72">
         <ReactECharts
           option={chartOptions}
           style={{ height: '100%', width: '100%' }}
           theme={isDark ? 'dark' : ''}
-          opts={{ renderer: 'canvas' }}
+          opts={{ renderer: 'canvas', locale: 'en' }}
           notMerge={true}
         />
       </div>
@@ -687,6 +702,7 @@ const ExtremeSourcesSheet: React.FC<{
 
   const SheetWrapper = isMobile ? Drawer : Sheet;
   const SheetContentWrapper = isMobile ? DrawerContent : SheetContent;
+  const t = useGT();
 
   return (
     <SheetWrapper open={open} onOpenChange={onOpenChange}>
@@ -695,9 +711,11 @@ const ExtremeSourcesSheet: React.FC<{
           {/* Header */}
           <div className="px-6 py-5 border-b border-neutral-200 dark:border-neutral-800">
             <div>
-              <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">All Sources</h2>
+              <T>
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">All Sources</h2>
+              </T>
               <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
-                {sources.length} research sources
+                {t('{count} research sources', { count: sources.length })}
               </p>
             </div>
           </div>
@@ -735,6 +753,7 @@ const ExtremeSearchComponent = ({
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const [previousItemsLength, setPreviousItemsLength] = useState(0);
   const timelineContainerRef = useRef<HTMLDivElement>(null);
+  const t = useGT();
 
   // Add state for accordion sections (default to closed for more compact view)
   const [researchProcessOpen, setResearchProcessOpen] = useState(false);
@@ -751,7 +770,7 @@ const ExtremeSearchComponent = ({
 
   const latestStatusTitle =
     latestStatusAnnotation?.status?.title ||
-    (state === 'call' || state === 'partial-call' ? 'Thinking...' : 'Processing...');
+    (state === 'call' || state === 'partial-call' ? t('Thinking...') : t('Processing...'));
 
   const planData = useMemo(() => (annotations as any[])?.find((ann) => ann.plan)?.plan, [annotations]);
 
@@ -826,7 +845,7 @@ const ExtremeSearchComponent = ({
             acc.push({
               codeId,
               code: annotation.status.code,
-              title: annotation.status.title || 'Python Code Execution',
+              title: annotation.status.title || t('Python Code Execution'),
               status: 'running',
             });
           }
@@ -843,7 +862,7 @@ const ExtremeSearchComponent = ({
             acc.push({
               codeId: `code-${acc.length}`,
               code: annotation.status.code,
-              title: annotation.status.title || 'Python Code Execution',
+              title: annotation.status.title || t('Python Code Execution'),
               result: annotation.status.result,
               charts: annotation.status.charts,
               status: 'complete' as const,
@@ -931,7 +950,7 @@ const ExtremeSearchComponent = ({
         const codeCalls = (research.toolResults || [])
           .filter((call) => call.toolName === 'codeRunner')
           .map((call, index) => {
-            const title = call.args?.title || 'Python Code Execution';
+            const title = call.args?.title || t('Python Code Execution');
             const code = call.args?.code || '';
             const codeId = `code-result-${index}`;
             // Find the corresponding result
@@ -1226,19 +1245,19 @@ const ExtremeSearchComponent = ({
                             if (isReadingContent && item.searchData.sources.length > 0 && state !== 'result') {
                               return (
                                 <TextShimmer className="text-xs py-0.5" duration={2.5}>
-                                  Reading content...
+                                  {t('Reading content...')}
                                 </TextShimmer>
                               );
                             } else if (item.status === 'loading' && state !== 'result') {
                               return (
                                 <TextShimmer className="text-xs py-0.5" duration={2.5}>
-                                  Searching sources...
+                                  {t('Searching sources...')}
                                 </TextShimmer>
                               );
                             } else if (item.status === 'no_results' && item.searchData.sources.length === 0) {
                               return (
                                 <p className="text-xs text-neutral-500 dark:text-neutral-400 py-1 mt-1">
-                                  No sources found for this query.
+                                  {t('No sources found for this query.')}
                                 </p>
                               );
                             }
@@ -1259,7 +1278,7 @@ const ExtremeSearchComponent = ({
                           {item.codeData.result && (
                             <div className="mt-2">
                               <div className="text-xs text-neutral-600 dark:text-neutral-400 font-medium mb-1">
-                                Result:
+                                {t('Result:')}
                               </div>
                               <div className="bg-neutral-100 dark:bg-neutral-800 p-2 rounded-md overflow-auto max-h-[100px] text-xs font-mono">
                                 <pre className="whitespace-pre-wrap break-words">{item.codeData.result}</pre>
@@ -1281,7 +1300,7 @@ const ExtremeSearchComponent = ({
                           {/* If still running */}
                           {item.codeData.status === 'running' && state !== 'result' && (
                             <TextShimmer className="text-xs py-0.5 mt-1" duration={2.5}>
-                              Executing code...
+                              {t('Executing code...')}
                             </TextShimmer>
                           )}
                         </>
@@ -1299,10 +1318,37 @@ const ExtremeSearchComponent = ({
 
   // Add horizontal scroll support with mouse wheel
   const handleWheelScroll = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (e.deltaY !== 0) {
+    const container = e.currentTarget;
+    
+    // Only handle vertical scrolling
+    if (e.deltaY === 0) return;
+    
+    // Check if container can scroll horizontally
+    const canScrollHorizontally = container.scrollWidth > container.clientWidth;
+    if (!canScrollHorizontally) return;
+    
+    // Always stop propagation first to prevent page scroll interference
+    e.stopPropagation();
+    
+    // Check scroll position to determine if we should handle the event
+    const isAtLeftEdge = container.scrollLeft <= 1; // Small tolerance for edge detection
+    const isAtRightEdge = container.scrollLeft >= container.scrollWidth - container.clientWidth - 1;
+    
+    // Only prevent default if we're not at edges OR if we're scrolling in the direction that would move within bounds
+    if (!isAtLeftEdge && !isAtRightEdge) {
+      // In middle of scroll area - always handle
       e.preventDefault();
-      e.currentTarget.scrollLeft += e.deltaY;
+      container.scrollLeft += e.deltaY;
+    } else if (isAtLeftEdge && e.deltaY > 0) {
+      // At left edge, scrolling right - handle it
+      e.preventDefault();
+      container.scrollLeft += e.deltaY;
+    } else if (isAtRightEdge && e.deltaY < 0) {
+      // At right edge, scrolling left - handle it
+      e.preventDefault();
+      container.scrollLeft += e.deltaY;
     }
+    // If at edge and scrolling in direction that would go beyond bounds, let the event continue but without propagation
   };
 
   // Rendering the sources card for result state
@@ -1332,7 +1378,9 @@ const ExtremeSearchComponent = ({
               <div className="p-1.5 rounded-md bg-neutral-100 dark:bg-neutral-800">
                 <Globe className="h-3.5 w-3.5 text-neutral-500" />
               </div>
-              <h2 className="font-medium text-sm">Sources</h2>
+              <T>
+                <h2 className="font-medium text-sm">Sources</h2>
+              </T>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="rounded-full text-xs px-2.5 py-0.5">
@@ -1348,7 +1396,7 @@ const ExtremeSearchComponent = ({
                     setSourcesSheetOpen(true);
                   }}
                 >
-                  View all
+                  {t('View all')}
                   <ArrowUpRight className="w-3 h-3 ml-1" />
                 </Button>
               )}
@@ -1398,7 +1446,7 @@ const ExtremeSearchComponent = ({
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                   >
-                    No sources found for this research.
+                    {t('No sources found for this research.')}
                   </motion.p>
                 )}
               </CardContent>
@@ -1466,7 +1514,7 @@ const ExtremeSearchComponent = ({
             className="py-2 px-3 border-b bg-neutral-50 dark:bg-neutral-900 flex justify-between items-center cursor-pointer"
             onClick={() => setResearchProcessOpen(!researchProcessOpen)}
           >
-            <div className="text-xs font-medium text-neutral-800 dark:text-neutral-200 truncate">Research Process</div>
+            <div className="text-xs font-medium text-neutral-800 dark:text-neutral-200 truncate">{t('Research Process')}</div>
             {researchProcessOpen ? (
               <ChevronDown className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400" />
             ) : (
@@ -1494,9 +1542,17 @@ const ExtremeSearchComponent = ({
         {allCharts.length > 0 && (
           <div className="mb-4">
             <div className="flex items-center gap-1.5 mb-2">
-              <h3 className="text-xs font-medium text-neutral-800 dark:text-neutral-200">Visualizations</h3>
+              <T>
+                <h3 className="text-xs font-medium text-neutral-800 dark:text-neutral-200">Visualizations</h3>
+              </T>
               <div className="text-[10px] px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-800 rounded-md text-neutral-500 dark:text-neutral-400">
-                {allCharts.length} chart{allCharts.length !== 1 ? 's' : ''}
+                <T>
+                  <Plural 
+                    n={allCharts.length}
+                    singular={<><Num>{allCharts.length}</Num> chart</>}
+                    plural={<><Num>{allCharts.length}</Num> charts</>}
+                  />
+                </T>
               </div>
             </div>
 
@@ -1559,7 +1615,9 @@ const ExtremeSearchComponent = ({
               >
                 {planData ? (
                   <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-neutral-800 dark:text-neutral-200 mb-3">Research Plan</h3>
+                    <T>
+                      <h3 className="text-sm font-medium text-neutral-800 dark:text-neutral-200 mb-3">Research Plan</h3>
+                    </T>
                     {planData.map((plan: any, index: number) => (
                       <motion.div
                         key={index}
@@ -1619,7 +1677,7 @@ const ExtremeSearchComponent = ({
                 ) : (
                   <div className="space-y-3 py-2">
                     <h3 className="text-sm font-medium text-neutral-800 dark:text-neutral-200">
-                      Preparing Research Plan
+                      {t('Preparing Research Plan')}
                     </h3>
                     <Skeleton className="h-5 w-full bg-[#4ade80]/20" />
                     <Skeleton className="h-5 w-3/4 bg-[#4ade80]/20" />

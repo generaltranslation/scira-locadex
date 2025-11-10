@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Minimize2, Maximize2, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Marked from 'marked-react';
+import { useGT } from 'gt-next';
 
 export interface ReasoningPart {
   type: 'reasoning';
@@ -128,6 +129,11 @@ const MarkdownRenderer = React.memo(({ content }: { content: string }) => {
 });
 MarkdownRenderer.displayName = 'MarkdownRenderer';
 
+// Helper function to check if content is empty (just newlines)
+const isEmptyContent = (content: string): boolean => {
+  return !content || content.trim() === '' || /^\n+$/.test(content);
+};
+
 export const ReasoningPartView: React.FC<ReasoningPartViewProps> = React.memo(
   ({
     part,
@@ -141,6 +147,7 @@ export const ReasoningPartView: React.FC<ReasoningPartViewProps> = React.memo(
     setIsExpanded,
   }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
+    const t = useGT();
 
     // Auto-scroll to bottom when new content is added during reasoning
     useEffect(() => {
@@ -159,6 +166,16 @@ export const ReasoningPartView: React.FC<ReasoningPartViewProps> = React.memo(
         }, 10);
       }
     }, [part.details, isComplete]);
+
+    // Check if all content is empty (just newlines or whitespace)
+    const hasNonEmptyDetails =
+      part.details && part.details.some((detail) => detail.type === 'text' && !isEmptyContent(detail.text));
+    const hasNonEmptyReasoning = part.reasoning && !isEmptyContent(part.reasoning);
+
+    // If all content is empty, don't render the reasoning section
+    if (!hasNonEmptyDetails && !hasNonEmptyReasoning) {
+      return null;
+    }
 
     return (
       <div className="my-3" key={sectionKey}>
@@ -195,14 +212,14 @@ export const ReasoningPartView: React.FC<ReasoningPartViewProps> = React.memo(
                     <div className="size-3 text-blue-500 dark:text-blue-400">
                       <SpinnerIcon />
                     </div>
-                    <span className="text-xs font-medium">Thinking</span>
+                    <span className="text-xs font-medium">{t('Thinking')}</span>
                     {parallelTool && <span className="text-xs font-normal opacity-70">({parallelTool})</span>}
                   </div>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
                   <Sparkles className="size-4 text-amber-500 dark:text-amber-400" strokeWidth={2} />
-                  <div className="text-sm font-medium text-neutral-800 dark:text-neutral-200">Reasoning</div>
+                  <div className="text-sm font-medium text-neutral-800 dark:text-neutral-200">{t('Reasoning')}</div>
                 </div>
               )}
             </div>
@@ -221,7 +238,7 @@ export const ReasoningPartView: React.FC<ReasoningPartViewProps> = React.memo(
                     setIsFullscreen(!isFullscreen);
                   }}
                   className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-full text-neutral-500 dark:text-neutral-400 transition-colors"
-                  aria-label={isFullscreen ? 'Minimize' : 'Maximize'}
+                  aria-label={isFullscreen ? t('Minimize') : t('Maximize')}
                 >
                   {isFullscreen ? (
                     <Minimize2 className="size-3.5 text-violet-500 dark:text-violet-400" strokeWidth={2} />
@@ -258,25 +275,28 @@ export const ReasoningPartView: React.FC<ReasoningPartViewProps> = React.memo(
                     )}
                   >
                     {part.details && part.details.length > 0 ? (
-                      part.details.map((detail, detailIndex) =>
-                        detail.type === 'text' ? (
-                          <div
-                            key={detailIndex}
-                            className={cn(
-                              'px-3 py-3 text-xs leading-relaxed',
-                              detailIndex !== part.details.length - 1 &&
-                                'border-b border-neutral-200 dark:border-neutral-800/80',
-                            )}
-                          >
-                            <div className="text-neutral-800 dark:text-neutral-300 prose prose-sm dark:prose-invert max-w-none">
-                              <MarkdownRenderer content={detail.text} />
+                      part.details
+                        .filter((detail) => detail.type === 'text' && !isEmptyContent(detail.text))
+                        .map((detail, detailIndex) =>
+                          detail.type === 'text' ? (
+                            <div
+                              key={detailIndex}
+                              className={cn(
+                                'px-3 py-3 text-xs leading-relaxed',
+                                detailIndex !==
+                                  part.details.filter((d) => d.type === 'text' && !isEmptyContent(d.text)).length - 1 &&
+                                  'border-b border-neutral-200 dark:border-neutral-800/80',
+                              )}
+                            >
+                              <div className="text-neutral-800 dark:text-neutral-300 prose prose-sm dark:prose-invert max-w-none">
+                                <MarkdownRenderer content={detail.text} />
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          '<redacted>'
-                        ),
-                      )
-                    ) : part.reasoning ? (
+                          ) : (
+                            '<redacted>'
+                          ),
+                        )
+                    ) : part.reasoning && !isEmptyContent(part.reasoning) ? (
                       <div className="px-3 py-3 text-xs leading-relaxed">
                         <div className="text-neutral-800 dark:text-neutral-300 prose prose-sm dark:prose-invert max-w-none">
                           <MarkdownRenderer content={part.reasoning} />
@@ -284,7 +304,7 @@ export const ReasoningPartView: React.FC<ReasoningPartViewProps> = React.memo(
                       </div>
                     ) : (
                       <div className="px-3 py-3 text-xs">
-                        <div className="text-neutral-500 dark:text-neutral-400 italic">Waiting for reasoning...</div>
+                        <div className="text-neutral-500 dark:text-neutral-400 italic">{t('Waiting for reasoning...')}</div>
                       </div>
                     )}
                   </div>

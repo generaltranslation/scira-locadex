@@ -24,6 +24,7 @@ import {
 
 // Icons
 import { DollarSign, Activity, ArrowUpRight, ArrowDownRight, AlertCircle } from 'lucide-react';
+import { T, useGT, Var, Num, DateTime, useLocale } from 'gt-next';
 
 interface CryptoTickersProps {
   result: any;
@@ -57,13 +58,13 @@ interface CandlestickProps {
 }
 
 // Format price with appropriate decimal places and handle edge cases
-const formatPrice = (price: number | null | undefined, currency: string = 'USD') => {
+const formatPrice = (price: number | null | undefined, currency: string = 'USD', locale: string = 'en-US') => {
   if (price === null || price === undefined || isNaN(price)) {
     return 'N/A';
   }
 
   try {
-    const formatter = new Intl.NumberFormat('en-US', {
+    const formatter = new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: currency.toUpperCase(),
       minimumFractionDigits: price < 1 ? 6 : 2,
@@ -153,7 +154,7 @@ const Candlestick = (props: CandlestickProps) => {
     high,
     openClose: [open, close],
   } = props;
-  
+
   const isGrowing = open < close;
   const ratio = Math.abs(height / (close - open)) || 1;
 
@@ -231,19 +232,9 @@ const renderCandlestick = (props: any) => {
     const high = payload.high || 0;
     const low = payload.low || 0;
     const close = payload.close || 0;
-    
+
     if (high > 0 && low > 0) {
-      return (
-        <Candlestick
-          x={x}
-          y={y}
-          width={width}
-          height={height}
-          low={low}
-          high={high}
-          openClose={[open, close]}
-        />
-      );
+      return <Candlestick x={x} y={y} width={width} height={height} low={low} high={high} openClose={[open, close]} />;
     }
   }
 
@@ -254,6 +245,7 @@ const renderCandlestick = (props: any) => {
 
 // Custom tooltip for charts
 const CustomTooltip = ({ active, payload, label }: any) => {
+  const locale = useLocale();
   if (active && payload && payload.length) {
     const data = payload[0]?.payload as CandlestickData | undefined;
 
@@ -261,40 +253,41 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       // Candlestick tooltip
       return (
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg p-3 shadow-sm max-w-[200px] z-50">
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2 truncate">
-            {new Date(data.date).toLocaleDateString('en-US', {
-              weekday: 'short',
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric',
-            })}
-          </p>
-          <div className="space-y-1 text-xs">
-            <div className="flex justify-between gap-2">
-              <span className="text-neutral-500 dark:text-neutral-400 flex-shrink-0">Open:</span>
-              <span className="text-neutral-900 dark:text-neutral-100 font-medium truncate">
-                {formatPrice(data.openClose[0])}
-              </span>
+          <T>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2 truncate">
+              <DateTime 
+                options={{ weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }}
+              >
+                {new Date(data.date)}
+              </DateTime>
+            </p>
+            <div className="space-y-1 text-xs">
+              <div className="flex justify-between gap-2">
+                <span className="text-neutral-500 dark:text-neutral-400 flex-shrink-0">Open:</span>
+                <span className="text-neutral-900 dark:text-neutral-100 font-medium truncate">
+                  <Var>{formatPrice(data.openClose[0], locale)}</Var>
+                </span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-neutral-500 dark:text-neutral-400 flex-shrink-0">High:</span>
+                <span className="text-neutral-900 dark:text-neutral-100 font-medium truncate">
+                  <Var>{formatPrice(data.high, locale)}</Var>
+                </span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-neutral-500 dark:text-neutral-400 flex-shrink-0">Low:</span>
+                <span className="text-neutral-900 dark:text-neutral-100 font-medium truncate">
+                  <Var>{formatPrice(data.low, locale)}</Var>
+                </span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-neutral-500 dark:text-neutral-400 flex-shrink-0">Close:</span>
+                <span className="text-neutral-900 dark:text-neutral-100 font-medium truncate">
+                  <Var>{formatPrice(data.openClose[1], locale)}</Var>
+                </span>
+              </div>
             </div>
-            <div className="flex justify-between gap-2">
-              <span className="text-neutral-500 dark:text-neutral-400 flex-shrink-0">High:</span>
-              <span className="text-neutral-900 dark:text-neutral-100 font-medium truncate">
-                {formatPrice(data.high)}
-              </span>
-            </div>
-            <div className="flex justify-between gap-2">
-              <span className="text-neutral-500 dark:text-neutral-400 flex-shrink-0">Low:</span>
-              <span className="text-neutral-900 dark:text-neutral-100 font-medium truncate">
-                {formatPrice(data.low)}
-              </span>
-            </div>
-            <div className="flex justify-between gap-2">
-              <span className="text-neutral-500 dark:text-neutral-400 flex-shrink-0">Close:</span>
-              <span className="text-neutral-900 dark:text-neutral-100 font-medium truncate">
-                {formatPrice(data.openClose[1])}
-              </span>
-            </div>
-          </div>
+          </T>
         </div>
       );
     } else {
@@ -302,10 +295,10 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       return (
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg p-2 shadow-sm max-w-[150px] z-50">
           <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">
-            {new Date(label).toLocaleDateString()}
+            {new Date(label).toLocaleDateString(locale)}
           </p>
           <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100 truncate">
-            {formatPrice(payload[0].value)}
+            {formatPrice(payload[0].value, locale)}
           </p>
         </div>
       );
@@ -315,6 +308,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 const CryptoTickers: React.FC<CryptoTickersProps> = memo(({ result, coinId }) => {
+  const t = useGT();
+  const locale = useLocale();
   // Enhanced error handling
   if (!result) {
     return (
@@ -322,7 +317,9 @@ const CryptoTickers: React.FC<CryptoTickersProps> = memo(({ result, coinId }) =>
         <CardContent className="p-4">
           <div className="flex items-center gap-2 text-neutral-500 dark:text-neutral-400">
             <AlertCircle className="h-4 w-4" />
-            <span className="text-sm">No ticker data available</span>
+            <T>
+              <span className="text-sm">No ticker data available</span>
+            </T>
           </div>
         </CardContent>
       </Card>
@@ -335,9 +332,13 @@ const CryptoTickers: React.FC<CryptoTickersProps> = memo(({ result, coinId }) =>
         <CardContent className="p-4">
           <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
             <DollarSign className="h-4 w-4" />
-            <span className="text-sm font-medium">Error fetching ticker data</span>
+            <T>
+              <span className="text-sm font-medium">Error fetching ticker data</span>
+            </T>
           </div>
-          <p className="text-xs text-red-500 dark:text-red-300 mt-1">{result.error || 'Unknown error occurred'}</p>
+          <T>
+            <p className="text-xs text-red-500 dark:text-red-300 mt-1"><Var>{result.error || t('Unknown error occurred')}</Var></p>
+          </T>
         </CardContent>
       </Card>
     );
@@ -352,7 +353,9 @@ const CryptoTickers: React.FC<CryptoTickersProps> = memo(({ result, coinId }) =>
         <CardContent className="p-4">
           <div className="flex items-center gap-2 text-neutral-500 dark:text-neutral-400">
             <DollarSign className="h-4 w-4" />
-            <span className="text-sm">No ticker data available for {name || coinId}</span>
+            <T>
+              <span className="text-sm">No ticker data available for <Var>{name || coinId}</Var></span>
+            </T>
           </div>
         </CardContent>
       </Card>
@@ -422,7 +425,7 @@ const CryptoTickers: React.FC<CryptoTickersProps> = memo(({ result, coinId }) =>
 
                   <div className="text-right flex-shrink-0">
                     <div className="text-xs font-medium text-neutral-900 dark:text-neutral-100 tabular-nums">
-                      {formatPrice(price)}
+                      {formatPrice(price, locale)}
                     </div>
                     <div className="text-[10px] text-neutral-500 dark:text-neutral-400 tabular-nums">
                       Vol: {formatVolume(volume24h)}
@@ -436,9 +439,11 @@ const CryptoTickers: React.FC<CryptoTickersProps> = memo(({ result, coinId }) =>
 
         {tickers.length > 6 && (
           <div className="mt-3 text-center">
-            <span className="text-xs text-neutral-500 dark:text-neutral-400">
-              Showing 6 of {tickers.length} tickers
-            </span>
+            <T>
+              <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                Showing 6 of <Num>{tickers.length}</Num> tickers
+              </span>
+            </T>
           </div>
         )}
       </CardContent>
@@ -447,6 +452,8 @@ const CryptoTickers: React.FC<CryptoTickersProps> = memo(({ result, coinId }) =>
 });
 
 const CryptoChart: React.FC<CryptoChartProps> = memo(({ result, coinId, chartType = 'line' }) => {
+  const locale = useLocale();
+  const t = useGT();
   // Enhanced error handling
   if (!result) {
     return (
@@ -454,7 +461,9 @@ const CryptoChart: React.FC<CryptoChartProps> = memo(({ result, coinId, chartTyp
         <CardContent className="p-4">
           <div className="flex items-center gap-2 text-neutral-500 dark:text-neutral-400">
             <AlertCircle className="h-4 w-4" />
-            <span className="text-sm">No chart data available</span>
+            <T>
+              <span className="text-sm">No chart data available</span>
+            </T>
           </div>
         </CardContent>
       </Card>
@@ -467,9 +476,13 @@ const CryptoChart: React.FC<CryptoChartProps> = memo(({ result, coinId, chartTyp
         <CardContent className="p-4">
           <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
             <Activity className="h-4 w-4" />
-            <span className="text-sm font-medium">Error fetching chart data</span>
+            <T>
+              <span className="text-sm font-medium">Error fetching chart data</span>
+            </T>
           </div>
-          <p className="text-xs text-red-500 dark:text-red-300 mt-1">{result.error || 'Unknown error occurred'}</p>
+          <T>
+            <p className="text-xs text-red-500 dark:text-red-300 mt-1"><Var>{result.error || t('Unknown error occurred')}</Var></p>
+          </T>
         </CardContent>
       </Card>
     );
@@ -484,7 +497,9 @@ const CryptoChart: React.FC<CryptoChartProps> = memo(({ result, coinId, chartTyp
         <CardContent className="p-4">
           <div className="flex items-center gap-2 text-neutral-500 dark:text-neutral-400">
             <Activity className="h-4 w-4" />
-            <span className="text-sm">No chart data available for {coinId}</span>
+            <T>
+              <span className="text-sm">No chart data available for <Var>{coinId}</Var></span>
+            </T>
           </div>
         </CardContent>
       </Card>
@@ -500,7 +515,9 @@ const CryptoChart: React.FC<CryptoChartProps> = memo(({ result, coinId, chartTyp
         <CardContent className="p-4">
           <div className="flex items-center gap-2 text-neutral-500 dark:text-neutral-400">
             <Activity className="h-4 w-4" />
-            <span className="text-sm">Chart contains no data points</span>
+            <T>
+              <span className="text-sm">Chart contains no data points</span>
+            </T>
           </div>
         </CardContent>
       </Card>
@@ -546,9 +563,9 @@ const CryptoChart: React.FC<CryptoChartProps> = memo(({ result, coinId, chartTyp
   try {
     if (chartType === 'candlestick') {
       // Check if we have OHLC data or need to generate it from price data
-      const hasOHLCData = chartData.some((item) => 
-        item && typeof item === 'object' && 
-        ('open' in item || 'high' in item || 'low' in item || 'close' in item)
+      const hasOHLCData = chartData.some(
+        (item) =>
+          item && typeof item === 'object' && ('open' in item || 'high' in item || 'low' in item || 'close' in item),
       );
 
       if (hasOHLCData) {
@@ -570,11 +587,11 @@ const CryptoChart: React.FC<CryptoChartProps> = memo(({ result, coinId, chartTyp
               low,
               close,
               openClose: [open, close],
-              displayDate: date.toLocaleDateString('en-US', {
+              displayDate: date.toLocaleDateString(locale, {
                 month: 'short',
                 day: 'numeric',
               }),
-              fullDate: date.toLocaleDateString(),
+              fullDate: date.toLocaleDateString(locale),
             };
           })
           .filter((item) => item.open > 0 || item.high > 0 || item.low > 0 || item.close > 0);
@@ -587,48 +604,50 @@ const CryptoChart: React.FC<CryptoChartProps> = memo(({ result, coinId, chartTyp
 
         // Group data by day for candlestick generation
         const groupedByDay = new Map<string, any[]>();
-        
+
         validPriceData.forEach((item) => {
           const date = parseDate(item.timestamp || item.date);
           const dayKey = date.toISOString().split('T')[0];
-          
+
           if (!groupedByDay.has(dayKey)) {
             groupedByDay.set(dayKey, []);
           }
           groupedByDay.get(dayKey)!.push({
             ...item,
             price: extractPrice(item),
-            timestamp: date.getTime()
+            timestamp: date.getTime(),
           });
         });
 
         // Create candlesticks from grouped data
-        formattedData = Array.from(groupedByDay.entries()).map(([dayKey, dayData]) => {
-          // Sort by timestamp
-          dayData.sort((a, b) => a.timestamp - b.timestamp);
-          
-          const prices = dayData.map(d => d.price);
-          const open = prices[0];
-          const close = prices[prices.length - 1];
-          const high = Math.max(...prices);
-          const low = Math.min(...prices);
-          const date = new Date(dayKey);
+        formattedData = Array.from(groupedByDay.entries())
+          .map(([dayKey, dayData]) => {
+            // Sort by timestamp
+            dayData.sort((a, b) => a.timestamp - b.timestamp);
 
-          return {
-            date: date.toISOString(),
-            timestamp: date.getTime(),
-            open,
-            high,
-            low,
-            close,
-            openClose: [open, close],
-            displayDate: date.toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-            }),
-            fullDate: date.toLocaleDateString(),
-          };
-        }).sort((a, b) => a.timestamp - b.timestamp);
+            const prices = dayData.map((d) => d.price);
+            const open = prices[0];
+            const close = prices[prices.length - 1];
+            const high = Math.max(...prices);
+            const low = Math.min(...prices);
+            const date = new Date(dayKey);
+
+            return {
+              date: date.toISOString(),
+              timestamp: date.getTime(),
+              open,
+              high,
+              low,
+              close,
+              openClose: [open, close],
+              displayDate: date.toLocaleDateString(locale, {
+                month: 'short',
+                day: 'numeric',
+              }),
+              fullDate: date.toLocaleDateString(locale),
+            };
+          })
+          .sort((a, b) => a.timestamp - b.timestamp);
       }
 
       if (formattedData.length > 0) {
@@ -658,13 +677,13 @@ const CryptoChart: React.FC<CryptoChartProps> = memo(({ result, coinId, chartTyp
           const price = extractPrice(item);
 
           return {
-            date: date.toLocaleDateString('en-US', {
+            date: date.toLocaleDateString(locale, {
               month: 'short',
               day: 'numeric',
             }),
-            fullDate: date.toLocaleDateString(),
+            fullDate: date.toLocaleDateString(locale),
             price: price,
-            formattedPrice: formatPrice(price, vsCurrency),
+            formattedPrice: formatPrice(price, vsCurrency, locale),
           };
         });
 
@@ -737,7 +756,7 @@ const CryptoChart: React.FC<CryptoChartProps> = memo(({ result, coinId, chartTyp
       const date = new Date(dateStr);
       if (isNaN(date.getTime())) return dateStr;
 
-      const month = date.toLocaleString('en-US', { month: 'short' });
+      const month = date.toLocaleString(locale, { month: 'short' });
       const year = date.getFullYear().toString().slice(2);
       return `${month} '${year}`;
     } catch {
@@ -779,13 +798,13 @@ const CryptoChart: React.FC<CryptoChartProps> = memo(({ result, coinId, chartTyp
             <div className="flex items-start gap-3">
               {/* Coin Icon */}
               {coinData.image?.small && (
-                <SafeImage 
-                  src={coinData.image.small} 
+                <SafeImage
+                  src={coinData.image.small}
                   alt={displayName}
                   className="w-8 h-8 rounded-full flex-shrink-0"
                 />
               )}
-              
+
               <div className="flex-1 min-w-0">
                 {/* Name and Symbol */}
                 <div className="flex items-center gap-2 mb-2">
@@ -793,9 +812,7 @@ const CryptoChart: React.FC<CryptoChartProps> = memo(({ result, coinId, chartTyp
                     {displayName}
                   </h2>
                   {symbol && (
-                    <span className="text-sm text-neutral-500 dark:text-neutral-400 font-medium">
-                      {symbol}
-                    </span>
+                    <span className="text-sm text-neutral-500 dark:text-neutral-400 font-medium">{symbol}</span>
                   )}
                   {url && (
                     <Button variant="ghost" size="sm" asChild className="h-6 px-2 flex-shrink-0">
@@ -811,7 +828,9 @@ const CryptoChart: React.FC<CryptoChartProps> = memo(({ result, coinId, chartTyp
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                     {marketData.market_cap?.usd && (
                       <div>
-                        <div className="text-neutral-500 dark:text-neutral-400">Market Cap</div>
+                        <T>
+                          <div className="text-neutral-500 dark:text-neutral-400">Market Cap</div>
+                        </T>
                         <div className="font-medium text-neutral-900 dark:text-neutral-100">
                           {formatMarketCap(marketData.market_cap.usd)}
                         </div>
@@ -819,7 +838,9 @@ const CryptoChart: React.FC<CryptoChartProps> = memo(({ result, coinId, chartTyp
                     )}
                     {marketData.total_volume?.usd && (
                       <div>
-                        <div className="text-neutral-500 dark:text-neutral-400">24h Volume</div>
+                        <T>
+                          <div className="text-neutral-500 dark:text-neutral-400">24h Volume</div>
+                        </T>
                         <div className="font-medium text-neutral-900 dark:text-neutral-100">
                           {formatVolume(marketData.total_volume.usd)}
                         </div>
@@ -827,7 +848,9 @@ const CryptoChart: React.FC<CryptoChartProps> = memo(({ result, coinId, chartTyp
                     )}
                     {marketData.circulating_supply && (
                       <div>
-                        <div className="text-neutral-500 dark:text-neutral-400">Circulating</div>
+                        <T>
+                          <div className="text-neutral-500 dark:text-neutral-400">Circulating</div>
+                        </T>
                         <div className="font-medium text-neutral-900 dark:text-neutral-100">
                           {formatVolume(marketData.circulating_supply)} {symbol}
                         </div>
@@ -835,7 +858,9 @@ const CryptoChart: React.FC<CryptoChartProps> = memo(({ result, coinId, chartTyp
                     )}
                     {marketData.market_cap_rank && (
                       <div>
-                        <div className="text-neutral-500 dark:text-neutral-400">Rank</div>
+                        <T>
+                          <div className="text-neutral-500 dark:text-neutral-400">Rank</div>
+                        </T>
                         <div className="font-medium text-neutral-900 dark:text-neutral-100">
                           #{marketData.market_cap_rank}
                         </div>
@@ -862,7 +887,7 @@ const CryptoChart: React.FC<CryptoChartProps> = memo(({ result, coinId, chartTyp
           <div className="space-y-1 min-w-0 flex-1">
             <div className="flex items-center gap-3">
               <h3 className="text-sm font-medium text-neutral-900 dark:text-neutral-100 truncate">
-                {coinData ? 'OHLC Chart' : (chart.title || `${coinId} Chart`)}
+                {coinData ? 'OHLC Chart' : chart.title || `${coinId} Chart`}
               </h3>
               {!coinData && url && (
                 <Button variant="ghost" size="sm" asChild className="h-6 px-2 flex-shrink-0">
@@ -874,7 +899,7 @@ const CryptoChart: React.FC<CryptoChartProps> = memo(({ result, coinId, chartTyp
             </div>
             <div className="flex items-baseline gap-2 sm:gap-3 flex-wrap">
               <span className="text-lg sm:text-2xl font-semibold text-neutral-900 dark:text-neutral-100 tabular-nums break-all">
-                {formatPrice(lastPrice, vsCurrency)}
+                {formatPrice(lastPrice, vsCurrency, locale)}
               </span>
               <div
                 className={`flex items-center gap-1 text-xs sm:text-sm tabular-nums ${

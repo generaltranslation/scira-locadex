@@ -15,6 +15,9 @@ import { parseAsString, useQueryState } from 'nuqs';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 
+// gt-next imports
+import { T, useGT, Branch, Var, Currency } from 'gt-next';
+
 // Internal app imports
 import { suggestQuestions, updateChatVisibility } from '@/app/actions';
 
@@ -58,10 +61,10 @@ const ChangelogDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: 
               <Sparkle className="w-5 h-5 text-neutral-100 dark:text-neutral-900" weight="fill" />
             </div>
             <div className="space-y-3">
-              <h2 className="text-lg font-medium text-neutral-900 dark:text-neutral-100">Free Unlimited Models</h2>
-              <p className="text-neutral-600 dark:text-neutral-400 text-sm leading-relaxed max-w-xs mx-auto">
+              <T><h2 className="text-lg font-medium text-neutral-900 dark:text-neutral-100">Free Unlimited Models</h2></T>
+              <T><p className="text-neutral-600 dark:text-neutral-400 text-sm leading-relaxed max-w-xs mx-auto">
                 Grok 3 Mini and Grok 2 Vision are now unlimited for registered users.
-              </p>
+              </p></T>
             </div>
           </div>
 
@@ -70,7 +73,7 @@ const ChangelogDialog = ({ open, onOpenChange }: { open: boolean; onOpenChange: 
             onClick={() => onOpenChange(false)}
             className="w-full h-10 text-sm font-medium bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-100 dark:hover:bg-neutral-200 text-neutral-100 dark:text-neutral-900 transition-colors"
           >
-            Got it
+            <T>Got it</T>
           </Button>
         </div>
       </DialogContent>
@@ -99,12 +102,12 @@ const LaunchBadge = ({ open, onOpenChange }: { open: boolean; onOpenChange: (ope
             />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+            <T><p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
               Launched on Peerlist!
-            </p>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+            </p></T>
+            <T><p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
               Check out our project showcase
-            </p>
+            </p></T>
           </div>
           <button
             onClick={() => onOpenChange(false)}
@@ -123,7 +126,7 @@ const LaunchBadge = ({ open, onOpenChange }: { open: boolean; onOpenChange: (ope
             className="flex-1 text-center px-3 py-1.5 text-xs font-medium bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-100 dark:hover:bg-neutral-200 text-neutral-100 dark:text-neutral-900 rounded-md transition-colors"
             onClick={() => onOpenChange(false)}
           >
-            View Project
+            <T>View Project</T>
           </a>
         </div>
       </div>
@@ -144,8 +147,8 @@ const PostMessageUpgradeDialog = ({ open, onOpenChange }: { open: boolean; onOpe
                 <Crown className="w-4 h-4 text-white dark:text-black" weight="fill" />
               </div>
               <div>
-                <h2 className="text-lg font-medium text-neutral-900 dark:text-neutral-100">Upgrade to Scira Pro</h2>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">Get unlimited access to all features</p>
+                <T><h2 className="text-lg font-medium text-neutral-900 dark:text-neutral-100">Upgrade to Scira Pro</h2></T>
+                <T><p className="text-sm text-neutral-500 dark:text-neutral-400">Get unlimited access to all features</p></T>
               </div>
             </div>
           </div>
@@ -155,22 +158,22 @@ const PostMessageUpgradeDialog = ({ open, onOpenChange }: { open: boolean; onOpe
             <div className="flex items-start gap-3">
               <div className="w-1.5 h-1.5 rounded-full bg-neutral-400 dark:bg-neutral-500 mt-2 flex-shrink-0"></div>
               <div>
-                <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">Unlimited searches</p>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">No daily limits or restrictions</p>
+                <T><p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">Unlimited searches</p></T>
+                <T><p className="text-xs text-neutral-500 dark:text-neutral-400">No daily limits or restrictions</p></T>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <div className="w-1.5 h-1.5 rounded-full bg-neutral-400 dark:bg-neutral-500 mt-2 flex-shrink-0"></div>
               <div>
-                <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">Premium AI models</p>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">Claude 4 Opus, Grok 3, GPT-4o and more</p>
+                <T><p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">Premium AI models</p></T>
+                <T><p className="text-xs text-neutral-500 dark:text-neutral-400">Claude 4 Opus, Grok 3, GPT-4o and more</p></T>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <div className="w-1.5 h-1.5 rounded-full bg-neutral-400 dark:bg-neutral-500 mt-2 flex-shrink-0"></div>
               <div>
-                <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">PDF analysis</p>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">Upload and analyze documents</p>
+                <T><p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">PDF analysis</p></T>
+                <T><p className="text-xs text-neutral-500 dark:text-neutral-400">Upload and analyze documents</p></T>
               </div>
             </div>
           </div>
@@ -178,10 +181,18 @@ const PostMessageUpgradeDialog = ({ open, onOpenChange }: { open: boolean; onOpe
           {/* Pricing */}
           <div className="bg-neutral-50 dark:bg-neutral-900/50 rounded-lg p-4 space-y-2">
             <div className="flex items-baseline gap-1">
-              <span className="text-xl font-medium text-neutral-900 dark:text-neutral-100">$15</span>
+              <span className="text-xl font-medium text-neutral-900 dark:text-neutral-100">
+                <Currency options={{
+                  currency: 'USD',
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                }}>
+                  {15}
+                </Currency>
+              </span>
               <span className="text-sm text-neutral-500 dark:text-neutral-400">/month</span>
             </div>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">Cancel anytime</p>
+            <T><p className="text-xs text-neutral-500 dark:text-neutral-400">Cancel anytime</p></T>
           </div>
 
           {/* Actions */}
@@ -191,7 +202,7 @@ const PostMessageUpgradeDialog = ({ open, onOpenChange }: { open: boolean; onOpe
               onClick={() => onOpenChange(false)}
               className="flex-1 h-9 text-sm font-normal border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800"
             >
-              Maybe later
+              <T>Maybe later</T>
             </Button>
             <Button
               onClick={() => {
@@ -199,7 +210,7 @@ const PostMessageUpgradeDialog = ({ open, onOpenChange }: { open: boolean; onOpe
               }}
               className="flex-1 h-9 text-sm font-normal bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-100 text-white dark:text-black"
             >
-              Upgrade now
+              <T>Upgrade now</T>
             </Button>
           </div>
         </div>
@@ -225,6 +236,7 @@ const ChatInterface = memo(
     const router = useRouter();
     const [query] = useQueryState('query', parseAsString.withDefault(''));
     const [q] = useQueryState('q', parseAsString.withDefault(''));
+    const t = useGT();
 
     // Use localStorage hook directly for model selection with a default
     const [selectedModel, setSelectedModel] = useLocalStorage('scira-selected-model', 'scira-default');
@@ -416,14 +428,15 @@ const ChatInterface = memo(
             console.log('ChatSDK Error:', error.type, error.surface, error.message);
             // Only show toast for certain error types that need immediate attention
             if (error.type === 'offline' || error.surface === 'stream') {
-              toast.error('Connection Error', {
+              toast.error(t('Connection Error'), {
                 description: error.message,
               });
             }
           } else {
-            console.error('Chat error:', error.cause, error.message);
-            toast.error('An error occurred.', {
-              description: `Oops! An error occurred while processing your request. ${error.cause || error.message}`,
+            toast.error(t('An error occurred.'), {
+              description: t('Oops! An error occurred while processing your request. {error}', {
+                error: error.cause || error.message
+              }),
             });
           }
         },
@@ -627,12 +640,12 @@ const ChatInterface = memo(
         try {
           await updateChatVisibility(chatId, visibility);
           setSelectedVisibilityType(visibility);
-          toast.success(`Chat is now ${visibility}`);
+          toast.success(t('Chat is now {visibility}', { visibility }));
           // Invalidate cache to refresh the list with updated visibility
           invalidateChatsCache();
         } catch (error) {
           console.error('Error updating chat visibility:', error);
-          toast.error('Failed to update chat visibility');
+          toast.error(t('Failed to update chat visibility'));
         }
       },
       [chatId],
@@ -730,15 +743,15 @@ const ChatInterface = memo(
                 <div className="text-center space-y-4">
                   <div className="flex items-center justify-center gap-2 text-neutral-600 dark:text-neutral-400">
                     <Crown className="h-4 w-4" />
-                    <span className="text-sm font-medium">Daily limit reached</span>
+                    <T><span className="text-sm font-medium">Daily limit reached</span></T>
                   </div>
                   <div>
-                    <p className="text-neutral-700 dark:text-neutral-300 mb-2">
-                      You&apos;ve used all {SEARCH_LIMITS.DAILY_SEARCH_LIMIT} searches for today.
-                    </p>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                    <T><p className="text-neutral-700 dark:text-neutral-300 mb-2">
+                      You&apos;ve used all <Var>{SEARCH_LIMITS.DAILY_SEARCH_LIMIT}</Var> searches for today.
+                    </p></T>
+                    <T><p className="text-sm text-neutral-500 dark:text-neutral-400">
                       Upgrade to continue with unlimited searches and premium features.
-                    </p>
+                    </p></T>
                   </div>
                   <div className="flex gap-3">
                     <Button
@@ -749,7 +762,7 @@ const ChatInterface = memo(
                       size="sm"
                       className="flex-1"
                     >
-                      Refresh
+                      <T>Refresh</T>
                     </Button>
                     <Button
                       onClick={() => {
@@ -759,7 +772,7 @@ const ChatInterface = memo(
                       className="flex-1 bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-100 text-white dark:text-black"
                     >
                       <Crown className="h-3 w-3 mr-1.5" />
-                      Upgrade
+                      <T>Upgrade</T>
                     </Button>
                   </div>
                 </div>
@@ -838,9 +851,9 @@ const ChatInterface = memo(
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Crown className="h-3.5 w-3.5 text-neutral-500 dark:text-neutral-400" />
-                    <span className="text-sm text-neutral-700 dark:text-neutral-300">
-                      Daily limit reached ({SEARCH_LIMITS.DAILY_SEARCH_LIMIT} searches used)
-                    </span>
+                    <T><span className="text-sm text-neutral-700 dark:text-neutral-300">
+                      Daily limit reached (<Var>{SEARCH_LIMITS.DAILY_SEARCH_LIMIT}</Var> searches used)
+                    </span></T>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
@@ -851,7 +864,7 @@ const ChatInterface = memo(
                       }}
                       className="h-7 px-2 text-xs"
                     >
-                      Refresh
+                      <T>Refresh</T>
                     </Button>
                     <Button
                       size="sm"
@@ -860,7 +873,7 @@ const ChatInterface = memo(
                       }}
                       className="h-7 px-3 text-xs bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-100 text-white dark:text-black"
                     >
-                      Upgrade
+                      <T>Upgrade</T>
                     </Button>
                   </div>
                 </div>
